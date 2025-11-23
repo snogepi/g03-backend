@@ -9,7 +9,8 @@ import {
   updateMyRequest,
   updateRequest,
   deleteRequest,
-  getRequestCounts
+  getRequestCounts,
+  getRequestsByStatus
 } from '../controllers/request.js';
 
 const router = express.Router();
@@ -21,6 +22,7 @@ router.get('/requestcounts', auth, getRequestCounts);
 router.get('/viewrequests', auth, viewRequests);            
 router.put('/updaterequest/:id', auth, updateRequest);      
 router.delete('/deleterequest/:id', auth, deleteRequest);   
+router.get('/requestsbystatus', auth, getRequestsByStatus);
 
 // ---------------------------------
 // STUDENT ROUTES

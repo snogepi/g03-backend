@@ -343,6 +343,36 @@ export async function getRequestCounts(req, res) {
     });
   }
 }
+
+// STAFF: get requests by status
+export async function getRequestsByStatus(req, res) {
+  try {
+    const { status } = req.query;
+
+    if (!status) {
+      return res.status(400).json({
+        success: false,
+        message: "Status query parameter is required."
+      });
+    }
+
+    const requests = await RequestModel.find({ status, is_deleted: false })
+      .populate('student_id')
+      .sort({ request_date: -1 });
+
+    res.status(200).json({
+      success: true,
+      requests
+    });
+  } catch (error) {
+    console.error("Failed to fetch requests by status:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching requests."
+    });
+  }
+}
+
 // ---------------------------------
 // BOTH
 // ---------------------------------
