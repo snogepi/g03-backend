@@ -100,7 +100,7 @@ export async function viewMyRequests(req, res) {
       });
     }
 
-    const requests = await RequestModel.find({ student_id: studentId })
+    const requests = await RequestModel.find({ student_id: studentId, is_deleted: false })
       .sort({ request_date: -1 });
     res.status(200).json({
       success: true,
@@ -120,10 +120,10 @@ export async function updateMyRequest(req, res) {
     const { id } = req.params;
 
     const request = await RequestModel.findById(id);
-    if (!request) {
+    if (!request || request.is_deleted) {
       return res.status(404).json({
         success: false,
-        message: "Request not found"
+        message: "Request not found or has been deleted."
       });
     }
 
@@ -209,6 +209,13 @@ export async function updateRequest(req, res) { // working!
   try {
     const { id } = req.params;
 
+    const existingRequest = await RequestModel.findById(id)
+    if (!existingRequest || existingRequest.is_deleted) {
+        return res.status(404).json({
+            success: false,
+            message: "Request not found or has been deleted."
+        })
+    }
     const {
       status,
       remarks,
@@ -304,10 +311,10 @@ export async function deleteRequest(req, res) {
     const { id } = req.params;
 
     const request = await RequestModel.findById(id);
-    if (!request) {
+    if (!request || request.is_deleted) {
       return res.status(404).json({
         success: false,
-        message: "Request not found."
+        message: "Request not found or already deleted."
       });
     }
 
@@ -318,7 +325,7 @@ export async function deleteRequest(req, res) {
       });
     }
 
-    await RequestModel.findByIdAndDelete(id);
+    await RequestModel.findByIdAndUpdate(id, { is_deleted: true });
 
     res.status(200).json({
       success: true,

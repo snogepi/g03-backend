@@ -1,6 +1,7 @@
 // import mongoose
 import mongoose, { mongo } from "mongoose";
 import { DocumentModel } from "./document.js";
+import { type } from "os";
 
 // create schema?
 // const schemaName = new monggose.Schema({ fieldName: { type: String example lang } })
@@ -76,6 +77,10 @@ const requestSchema = new mongoose.Schema({
     release_date: {
         type: Date,
         default: null
+    },
+    is_deleted: {
+        type: Boolean,
+        default: false
     }
 })
 
