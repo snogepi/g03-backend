@@ -192,7 +192,7 @@ export async function updateMyRequest(req, res) {
 // get all reqs
 export async function viewRequests(req, res) { // working!
   try {
-    const requests = await RequestModel.find()
+    const requests = await RequestModel.find({ is_deleted: false })
       .populate('student_id');
 
     res.status(200).json({ success: true, requests });
