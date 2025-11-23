@@ -302,6 +302,38 @@ export async function updateRequest(req, res) { // working!
   }
 }
 
+export async function getRequestCounts(req, res) {
+  try {
+    const counts = await RequestModel.aggregate([
+      { $match: { is_deleted: false } },
+      { $group: { _id: "$status", count: { $sum: 1 } } }
+    ]);
+
+    const statusCounts = {};
+    counts.forEach(item => {
+      statusCounts[item._id] = item.count;
+    });
+
+    const allStatuses = ['FOR CLEARANCE', 'FOR PAYMENT', 'PROCESSING', 'FOR PICKUP', 'CLAIMED', 'CANCELLED', 'REJECTED'];
+    allStatuses.forEach(status => {
+      if (!(status in statusCounts)) {
+        statusCounts[status] = 0;
+      }
+    });
+    res.status(200).json({
+      success: true,
+      counts: statusCounts  
+    });
+  } catch (error) {
+    console.error("Failed to fetch request counts:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch request counts.",
+      error: error.message
+    });
+  }
+}
+
 // ---------------------------------
 // BOTH
 // ---------------------------------
