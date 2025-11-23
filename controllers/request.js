@@ -302,38 +302,47 @@ export async function updateRequest(req, res) { // working!
   }
 }
 
+
 export async function getRequestCounts(req, res) {
   try {
-    const counts = await RequestModel.aggregate([
+    const countsArray = await RequestModel.aggregate([
       { $match: { is_deleted: false } },
-      { $group: { _id: "$status", count: { $sum: 1 } } }
+      {
+        $group: {
+          _id: "$status",
+          count: { $sum: 1 },
+        },
+      },
     ]);
 
-    const statusCounts = {};
-    counts.forEach(item => {
-      statusCounts[item._id] = item.count;
+    const statuses = [
+      "FOR CLEARANCE",
+      "FOR PAYMENT",
+      "PROCESSING",
+      "FOR PICKUP",
+      "CLAIMED",
+      "CANCELLED",
+      "REJECTED",
+    ];
+
+    const counts = {};
+    statuses.forEach((status) => {
+      const found = countsArray.find((c) => c._id === status);
+      counts[status] = found ? found.count : 0;
     });
 
-    const allStatuses = ['FOR CLEARANCE', 'FOR PAYMENT', 'PROCESSING', 'FOR PICKUP', 'CLAIMED', 'CANCELLED', 'REJECTED'];
-    allStatuses.forEach(status => {
-      if (!(status in statusCounts)) {
-        statusCounts[status] = 0;
-      }
-    });
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
-      counts: statusCounts  
+      counts,
     });
-  } catch (error) {
-    console.error("Failed to fetch request counts:", error);
-    res.status(500).json({
+  } catch (err) {
+    console.error("Error in getRequestCounts:", err);
+    return res.status(500).json({
       success: false,
-      message: "Failed to fetch request counts.",
-      error: error.message
+      message: "Server error while fetching requests.",
     });
   }
 }
-
 // ---------------------------------
 // BOTH
 // ---------------------------------

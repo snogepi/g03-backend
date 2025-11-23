@@ -1,41 +1,37 @@
-import express from 'express'
-import { auth } from '../middleware/auth.js' 
+import express from 'express';
+import { auth } from '../middleware/auth.js';
 
-import { createRequest, viewRequest, viewMyRequests, viewRequests, updateMyRequest, updateRequest, deleteRequest, getRequestCounts } from '../controllers/request.js'
+import {
+  createRequest,
+  viewRequest,
+  viewMyRequests,
+  viewRequests,
+  updateMyRequest,
+  updateRequest,
+  deleteRequest,
+  getRequestCounts
+} from '../controllers/request.js';
 
 const router = express.Router();
 
 // ---------------------------------
-// STUDENT
+// STAFF ROUTES
 // ---------------------------------
-
-router.post('/createrequest', async(req, res) => { // working!
-    const newRequest = await createRequest(req.body);
-    res.json({
-        isAdded: {
-            request: newRequest
-        }
-    });
-})
-
-router.get('/viewrequest/:id', auth, viewRequest)
-
-router.get('/:id', auth, viewMyRequests)
-
-router.put('/updatemyrequest/:id', auth, updateMyRequest)
+router.get('/requestcounts', auth, getRequestCounts);       
+router.get('/viewrequests', auth, viewRequests);            
+router.put('/updaterequest/:id', auth, updateRequest);      
+router.delete('/deleterequest/:id', auth, deleteRequest);   
 
 // ---------------------------------
-// STAFF
+// STUDENT ROUTES
 // ---------------------------------
+router.post('/createrequest', async (req, res) => {         
+  const newRequest = await createRequest(req.body);
+  res.json({ isAdded: { request: newRequest } });
+});
 
-router.get('/viewrequests', auth, viewRequests) // working!
+router.get('/viewrequest/:id', auth, viewRequest);          
+router.put('/updatemyrequest/:id', auth, updateMyRequest);  
+router.get('/:id', auth, viewMyRequests);                  
 
-router.put('/updaterequest/:id', auth, updateRequest) // working!
-
-router.get('/requestcounts', auth, getRequestCounts)
-
-router.delete('/deleterequest/:id', auth, deleteRequest) // working!
-
-// router.put('/exportrequests', exportRequests)
-
-export { router as requestRoutes }
+export { router as requestRoutes };
