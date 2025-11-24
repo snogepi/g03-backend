@@ -5,9 +5,8 @@ import mongoose, { mongo } from "mongoose"
 // const schemaName = new monggose.Schema({ fieldName: { type: String example lang } })
 const studentSchema = new mongoose.Schema({
     rfid_tag: {
-        type: String//,
- //       sparse: true,
-   //     default: null
+        type: String,
+        default: null
     },
     student_number: {
         type: String,
@@ -64,9 +63,8 @@ const studentSchema = new mongoose.Schema({
 
 const staffSchema = new mongoose.Schema({
     rfid_tag: {
-        type: String//,
-        //unique: true,
-        //default: null
+        type: String,
+        default: null
     },
     employee_number: {
         type: String,
