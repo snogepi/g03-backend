@@ -48,7 +48,7 @@ const studentSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ["Enrolled", "Unenrolled", "Graduated", "On Leave (LOA)"],
+        enum: ["Enrolled", "Unenrolled", "Graduated", "On Leave", "Dropped"],
         default: "Enrolled"
     },
     reset_token: {
