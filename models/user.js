@@ -6,7 +6,9 @@ import mongoose, { mongo } from "mongoose"
 const studentSchema = new mongoose.Schema({
     rfid_tag: {
         type: String,
-        default: null
+        default: null,
+        unique: true,
+        sparse: true
     },
     student_number: {
         type: String,
@@ -61,15 +63,12 @@ const studentSchema = new mongoose.Schema({
     }
 })
 
-studentSchema.index(
-    { rfid_tag: 1 },
-    { unique: true, partialFilterExpression: { rfid_tag: { $ne: null } } }
-);
-
 const staffSchema = new mongoose.Schema({
     rfid_tag: {
         type: String,
-        default: null
+        default: null,
+        unique: true,
+        sparse: true
     },
     employee_number: {
         type: String,
@@ -110,11 +109,6 @@ const staffSchema = new mongoose.Schema({
         default: null
     }
 })
-
-staffSchema.index(
-    { rfid_tag: 1 },
-    { unique: true, partialFilterExpression: { rfid_tag: { $ne: null } } }
-);
 
 // export const className = mongoose.model('collectionName', instance)
 export const StudentModel = mongoose.model('Student', studentSchema)
