@@ -61,6 +61,11 @@ const studentSchema = new mongoose.Schema({
     }
 })
 
+studentSchema.index(
+    { rfid_tag: 1 },
+    { unique: true, partialFilterExpression: { rfid_tag: { $ne: null } } }
+);
+
 const staffSchema = new mongoose.Schema({
     rfid_tag: {
         type: String,
@@ -105,6 +110,11 @@ const staffSchema = new mongoose.Schema({
         default: null
     }
 })
+
+staffSchema.index(
+    { rfid_tag: 1 },
+    { unique: true, partialFilterExpression: { rfid_tag: { $ne: null } } }
+);
 
 // export const className = mongoose.model('collectionName', instance)
 export const StudentModel = mongoose.model('Student', studentSchema)
