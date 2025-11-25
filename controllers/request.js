@@ -1,7 +1,6 @@
 import { RequestModel } from "../models/request.js";
-import { StudentModel } from "../models/user.js";
+import { ClearanceModel } from "../models/clearance.js";
 import { createNotification } from "./notification.js";
-import { sendEmail } from "../utils/email.js";
 
 async function generateReferenceId() {
     const now = new Date();
@@ -223,12 +222,14 @@ export async function updateRequest(req, res) {
     if (status && status !== existingRequest.status) {
       updateData.status = status;
       
+      // UPDATED: Only set payment_verified_by when transitioning from FOR PAYMENT to PROCESSING
       if (existingRequest.status === 'FOR PAYMENT' && status === 'PROCESSING') {
-        updateData.payment_verified_by = req.user.id; 
+        updateData.payment_verified_by = req.user.id; // Set to authenticated user's ID
       }
+      // Removed the else if that set payment_verified_by to null, as per your request to preserve it once set
     }
     
-    if (remarks !== undefined) updateData.remarks = remarks;  
+    if (remarks !== undefined) updateData.remarks = remarks;  // Fixed: Added !== undefined check
     if (release_date !== undefined) updateData.release_date = release_date;
     
     const updatedRequest = await RequestModel.findByIdAndUpdate(
@@ -237,7 +238,7 @@ export async function updateRequest(req, res) {
       { new: true }
     )
       .populate("student_id")
-      .populate("payment_verified_by");
+      .populate("payment_verified_by");  // Ensure payment_verified_by is populated with staff details
 
     if (!updatedRequest) {
       return res.status(404).json({
@@ -246,31 +247,41 @@ export async function updateRequest(req, res) {
       });
     }
     
-    let notificationMessage = '';
     if (status === "FOR CLEARANCE") {
-      notificationMessage = "Your request is now pending. Please wait for clearance verification.";
-    } else if (status === "FOR PAYMENT") {
-      notificationMessage = "Your request is now pending. Please wait for payment verification.";
-    } else if (status === "PROCESSING") {
-      notificationMessage = "Your request is now being processed. Please wait for a message when it is ready for pickup.";
-    } else if (status === "FOR PICKUP") {
-      notificationMessage = "Your document/s is/are ready for pickup!";
-    } else if (status === "CLAIMED") {
-      notificationMessage = "You have successfully claimed your document/s.";
-    } else if (status === "REJECTED") {
-      notificationMessage = "Your request has been rejected. Please check the remarks for more details.";
-    } else if (status === "CANCELLED") {
-      notificationMessage = "Your request has been cancelled.";
-    } else {
-
-      notificationMessage = `Your request status has been updated to: ${status}.`;
-    }
-
-    if (status && status !== existingRequest.status) {
       createNotification(
         "Student",
         updatedRequest.student_id._id,
-        notificationMessage
+        "Your request is now pending. Please wait for clearance verification."
+      );
+    } else if (status === "FOR PAYMENT") {
+      createNotification(
+        "Student",
+        updatedRequest.student_id._id,
+        "Your request is now pending. Please wait for payment verification."
+      );
+    } else if (status === "PROCESSING") {
+      createNotification(
+        "Student",
+        updatedRequest.student_id._id,
+        "Your request is now being processed. Please wait for a message when it is ready for pickup."
+      );
+      } else if (status === "FOR PICKUP") {
+      createNotification(
+        "Student",
+        updatedRequest.student_id._id,
+        "Your document/s is/are ready for pickup!"
+      );
+    } else if (status === "CLAIMED") {
+      createNotification(
+        "Student",
+        updatedRequest.student_id._id,
+        "You have successfully claimed your document/s."
+      );
+    } else if (status === "REJECTED") {
+      createNotification(
+        "Student",
+        updatedRequest.student_id._id,
+        "Your request has been rejected. Please check the remarks for more details."
       );
     }
 
@@ -287,6 +298,7 @@ export async function updateRequest(req, res) {
     });
   }
 }
+
 
 export async function getRequestCounts(req, res) {
   try {
