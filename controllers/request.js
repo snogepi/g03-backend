@@ -263,7 +263,7 @@ export async function updateRequest(req, res) {
       const remarksText = remarksChanged ? `Remarks: ${remarks || 'None'}.` : '';
       const text = `Dear ${updatedRequest.student_id.first_name},\n\nYour request (Reference ID: ${updatedRequest.reference_id}) has been updated.\n${statusText}\n${remarksText}\n\nPlease check your account for more details.\n\nBest regards,\nReq-IT Team`;
       const html = `<p>Dear ${updatedRequest.student_id.first_name},</p><p>Your request (Reference ID: ${updatedRequest.reference_id}) has been updated.</p><p>${statusText}</p><p>${remarksText}</p><p>Please check your account for more details.</p><p>Best regards,<br>Req-IT Team</p>`;
-
+      console.log('Sending email...');
       emailPromise = sendEmail(studentEmail, subject, text, html).catch((error) => {
         console.error('Failed to send email notification:', error);
       });
