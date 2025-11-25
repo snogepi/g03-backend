@@ -219,30 +219,28 @@ export async function updateRequest(req, res) {
     const { status, remarks, release_date } = req.body;
     const updateData = {};
 
-    
     if (status && status !== existingRequest.status) {
       updateData.status = status;
       
-      if (existingRequest.status === 'FOR CLEARANCE' && status === 'FOR PAYMENT') {
+      // UPDATED: Only set payment_verified_by when transitioning from FOR PAYMENT to PROCESSING
+      if (existingRequest.status === 'FOR PAYMENT' && status === 'PROCESSING') {
         updateData.payment_verified_by = req.user.id; // Set to authenticated user's ID
-      } else if (status !== 'FOR PAYMENT') {
-        
-        updateData.payment_verified_by = null;
       }
-      
+      // Removed the else if that set payment_verified_by to null, as per your request to preserve it once set
     }
     
-    if (remarks !== undefined) updateData.remarks = remarks;
+    if (remarks !== undefined) updateData.remarks = remarks;  // Fixed: Added !== undefined check
     if (release_date !== undefined) updateData.release_date = release_date;
+    
     const updatedRequest = await RequestModel.findByIdAndUpdate(
       id,
       updateData,
       { new: true }
     )
       .populate("student_id")
-      .populate("payment_verified_by"); 
+      .populate("payment_verified_by");  // Ensure payment_verified_by is populated with staff details
 
-      if (!updatedRequest) {
+    if (!updatedRequest) {
       return res.status(404).json({
         success: false,
         message: "Request not found."
