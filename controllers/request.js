@@ -254,22 +254,19 @@ export async function updateRequest(req, res) {
       });
     }
 
-    if (statusChanged || remarksChanged) {
-      const studentEmail = updatedRequest.student_id?.email;
-      if (!studentEmail) {
-        console.warn(`No email found for student ${updatedRequest.student_id?._id}; skipping email notification.`);
-      } else {
-        const subject = 'Your Request Status Has Been Updated';
-        const statusText = statusChanged ? `Status updated to: ${status}.` : '';
-        const remarksText = remarksChanged ? `Remarks: ${remarks || 'None'}.` : '';
-        const text = `Dear ${updatedRequest.student_id.first_name},\n\nYour request (Reference ID: ${updatedRequest.reference_id}) has been updated.\n${statusText}\n${remarksText}\n\nPlease check your account for more details.\n\nBest regards,\nReq-IT Team`;
-        const html = `<p>Dear ${updatedRequest.student_id.first_name},</p><p>Your request (Reference ID: ${updatedRequest.reference_id}) has been updated.</p><p>${statusText}</p><p>${remarksText}</p><p>Please check your account for more details.</p><p>Best regards,<br>Req-IT Team</p>`;
+    const studentEmail = updatedRequest.student_id?.email;
+    let emailPromise = null; 
 
-        const emailResult = await sendEmail(studentEmail, subject, text, html);
-        if (!emailResult.success) {
-          console.error('Failed to send email notification:', emailResult.error);
-        }
-      }
+    if ((statusChanged || remarksChanged) && studentEmail) {
+      const subject = 'Your Request Status Has Been Updated';
+      const statusText = statusChanged ? `Status updated to: ${status}.` : '';
+      const remarksText = remarksChanged ? `Remarks: ${remarks || 'None'}.` : '';
+      const text = `Dear ${updatedRequest.student_id.first_name},\n\nYour request (Reference ID: ${updatedRequest.reference_id}) has been updated.\n${statusText}\n${remarksText}\n\nPlease check your account for more details.\n\nBest regards,\nReq-IT Team`;
+      const html = `<p>Dear ${updatedRequest.student_id.first_name},</p><p>Your request (Reference ID: ${updatedRequest.reference_id}) has been updated.</p><p>${statusText}</p><p>${remarksText}</p><p>Please check your account for more details.</p><p>Best regards,<br>Req-IT Team</p>`;
+
+      emailPromise = sendEmail(studentEmail, subject, text, html).catch((error) => {
+        console.error('Failed to send email notification:', error);
+      });
     }
 
     if (statusChanged) {
@@ -317,6 +314,14 @@ export async function updateRequest(req, res) {
       message: "Request updated successfully.",
       request: updatedRequest
     });
+
+    if (emailPromise) {
+      emailPromise.then((result) => {
+        if (result?.success) {
+          console.log('Email sent successfully:', result.messageId);
+        }
+      });
+    }
   } catch (error) {
     console.error("Failed to update request:", error);
     res.status(500).json({
@@ -325,7 +330,6 @@ export async function updateRequest(req, res) {
     });
   }
 }
-
 
 export async function getRequestCounts(req, res) {
   try {
