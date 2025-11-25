@@ -1,6 +1,6 @@
 import { RequestModel } from "../models/request.js";
 import { ClearanceModel } from "../models/clearance.js";
-import { createNotification } from "../notification.js";
+import { createNotification } from "../controllers/notification.js";
 
 async function generateReferenceId() {
     const now = new Date();
