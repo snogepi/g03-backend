@@ -52,17 +52,9 @@ const requestSchema = new mongoose.Schema({
         type: Date,
         default: Date.now,
     },
-    proof_of_payment: {
-        type: String,
-        default: null
-    },
     payment_verified_by: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Staff',
-        default: null
-    },
-    processing_time: {
-        type: Number,
         default: null
     },
     status: {

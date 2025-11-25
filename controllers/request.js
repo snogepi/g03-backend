@@ -205,50 +205,50 @@ export async function viewRequests(req, res) { // working!
 }
 
 // update reqs (staff ONLY)
-export async function updateRequest(req, res) { // working!
+export async function updateRequest(req, res) {
   try {
     const { id } = req.params;
-
-    const existingRequest = await RequestModel.findById(id)
+    const existingRequest = await RequestModel.findById(id);
     if (!existingRequest || existingRequest.is_deleted) {
-        return res.status(404).json({
-            success: false,
-            message: "Request not found or has been deleted."
-        })
+      return res.status(404).json({
+        success: false,
+        message: "Request not found or has been deleted."
+      });
     }
-    const {
-      status,
-      remarks,
-      processing_time,
-      release_date,
-      proof_of_payment,
-      payment_verified_by,
-    } = req.body;
 
+    const { status, remarks, release_date } = req.body;
     const updateData = {};
 
-    if (status) updateData.status = status;
+    
+    if (status && status !== existingRequest.status) {
+      updateData.status = status;
+      
+      if (existingRequest.status === 'FOR CLEARANCE' && status === 'FOR PAYMENT') {
+        updateData.payment_verified_by = req.user.id; // Set to authenticated user's ID
+      } else if (status !== 'FOR PAYMENT') {
+        
+        updateData.payment_verified_by = null;
+      }
+      
+    }
+    
     if (remarks !== undefined) updateData.remarks = remarks;
-    if (processing_time !== undefined) updateData.processing_time = processing_time;
     if (release_date !== undefined) updateData.release_date = release_date;
-    if (proof_of_payment !== undefined) updateData.proof_of_payment = proof_of_payment;
-    if (payment_verified_by !== undefined) updateData.payment_verified_by = payment_verified_by;
-
     const updatedRequest = await RequestModel.findByIdAndUpdate(
       id,
       updateData,
       { new: true }
     )
       .populate("student_id")
-      .populate("payment_verified_by");
+      .populate("payment_verified_by"); 
 
-    if (!updatedRequest) {
+      if (!updatedRequest) {
       return res.status(404).json({
         success: false,
         message: "Request not found."
       });
     }
-
+    
     if (status === "FOR CLEARANCE") {
       createNotification(
         "Student",
@@ -267,7 +267,7 @@ export async function updateRequest(req, res) { // working!
         updatedRequest.student_id._id,
         "Your request is now being processed. Please wait for a message when it is ready for pickup."
       );
-    } else if (status === "FOR PICKUP") {
+      } else if (status === "FOR PICKUP") {
       createNotification(
         "Student",
         updatedRequest.student_id._id,
@@ -292,7 +292,6 @@ export async function updateRequest(req, res) { // working!
       message: "Request updated successfully.",
       request: updatedRequest
     });
-
   } catch (error) {
     console.error("Failed to update request:", error);
     res.status(500).json({
