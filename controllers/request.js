@@ -1,6 +1,7 @@
 import { RequestModel } from "../models/request.js";
-import { ClearanceModel } from "../models/clearance.js";
+import { StudentModel } from "../models/user.js";
 import { createNotification } from "./notification.js";
+import { sendEmail } from "../utils/email.js";
 
 async function generateReferenceId() {
     const now = new Date();
@@ -219,17 +220,23 @@ export async function updateRequest(req, res) {
     const { status, remarks, release_date } = req.body;
     const updateData = {};
 
+    let statusChanged = false;
+    let remarksChanged = false;
+
     if (status && status !== existingRequest.status) {
       updateData.status = status;
+      statusChanged = true;
       
-      // UPDATED: Only set payment_verified_by when transitioning from FOR PAYMENT to PROCESSING
       if (existingRequest.status === 'FOR PAYMENT' && status === 'PROCESSING') {
-        updateData.payment_verified_by = req.user.id; // Set to authenticated user's ID
+        updateData.payment_verified_by = req.user.id;
       }
-      // Removed the else if that set payment_verified_by to null, as per your request to preserve it once set
     }
     
-    if (remarks !== undefined) updateData.remarks = remarks;  // Fixed: Added !== undefined check
+    if (remarks !== undefined && remarks !== existingRequest.remarks) {
+      updateData.remarks = remarks;
+      remarksChanged = true;
+    }
+    
     if (release_date !== undefined) updateData.release_date = release_date;
     
     const updatedRequest = await RequestModel.findByIdAndUpdate(
@@ -238,7 +245,7 @@ export async function updateRequest(req, res) {
       { new: true }
     )
       .populate("student_id")
-      .populate("payment_verified_by");  // Ensure payment_verified_by is populated with staff details
+      .populate("payment_verified_by"); 
 
     if (!updatedRequest) {
       return res.status(404).json({
@@ -246,43 +253,63 @@ export async function updateRequest(req, res) {
         message: "Request not found."
       });
     }
-    
-    if (status === "FOR CLEARANCE") {
-      createNotification(
-        "Student",
-        updatedRequest.student_id._id,
-        "Your request is now pending. Please wait for clearance verification."
-      );
-    } else if (status === "FOR PAYMENT") {
-      createNotification(
-        "Student",
-        updatedRequest.student_id._id,
-        "Your request is now pending. Please wait for payment verification."
-      );
-    } else if (status === "PROCESSING") {
-      createNotification(
-        "Student",
-        updatedRequest.student_id._id,
-        "Your request is now being processed. Please wait for a message when it is ready for pickup."
-      );
+
+    if (statusChanged || remarksChanged) {
+      const studentEmail = updatedRequest.student_id?.email;
+      if (!studentEmail) {
+        console.warn(`No email found for student ${updatedRequest.student_id?._id}; skipping email notification.`);
+      } else {
+        const subject = 'Your Request Status Has Been Updated';
+        const statusText = statusChanged ? `Status updated to: ${status}.` : '';
+        const remarksText = remarksChanged ? `Remarks: ${remarks || 'None'}.` : '';
+        const text = `Dear ${updatedRequest.student_id.first_name},\n\nYour request (Reference ID: ${updatedRequest.reference_id}) has been updated.\n${statusText}\n${remarksText}\n\nPlease check your account for more details.\n\nBest regards,\nReq-IT Team`;
+        const html = `<p>Dear ${updatedRequest.student_id.first_name},</p><p>Your request (Reference ID: ${updatedRequest.reference_id}) has been updated.</p><p>${statusText}</p><p>${remarksText}</p><p>Please check your account for more details.</p><p>Best regards,<br>Req-IT Team</p>`;
+
+        const emailResult = await sendEmail(studentEmail, subject, text, html);
+        if (!emailResult.success) {
+          console.error('Failed to send email notification:', emailResult.error);
+        }
+      }
+    }
+
+    if (statusChanged) {
+      if (status === "FOR CLEARANCE") {
+        createNotification(
+          "Student",
+          updatedRequest.student_id._id,
+          "Your request is now pending. Please wait for clearance verification."
+        );
+      } else if (status === "FOR PAYMENT") {
+        createNotification(
+          "Student",
+          updatedRequest.student_id._id,
+          "Your request is now pending. Please wait for payment verification."
+        );
+      } else if (status === "PROCESSING") {
+        createNotification(
+          "Student",
+          updatedRequest.student_id._id,
+          "Your request is now being processed. Please wait for a message when it is ready for pickup."
+        );
       } else if (status === "FOR PICKUP") {
-      createNotification(
-        "Student",
-        updatedRequest.student_id._id,
-        "Your document/s is/are ready for pickup!"
-      );
-    } else if (status === "CLAIMED") {
-      createNotification(
-        "Student",
-        updatedRequest.student_id._id,
-        "You have successfully claimed your document/s."
-      );
-    } else if (status === "REJECTED") {
-      createNotification(
-        "Student",
-        updatedRequest.student_id._id,
-        "Your request has been rejected. Please check the remarks for more details."
-      );
+        createNotification(
+          "Student",
+          updatedRequest.student_id._id,
+          "Your document/s is/are ready for pickup!"
+        );
+      } else if (status === "CLAIMED") {
+        createNotification(
+          "Student",
+          updatedRequest.student_id._id,
+          "You have successfully claimed your document/s."
+        );
+      } else if (status === "REJECTED") {
+        createNotification(
+          "Student",
+          updatedRequest.student_id._id,
+          "Your request has been rejected. Please check the remarks for more details."
+        );
+      }
     }
 
     res.status(200).json({
