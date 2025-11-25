@@ -29,3 +29,9 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
 });
+
+app.post('/test-send-email', async (req, res) => {
+  const { to } = req.body;  // e.g., your email
+  const result = await sendEmail(to, 'Test from Render', 'This is a test.');
+  res.json(result);
+});
