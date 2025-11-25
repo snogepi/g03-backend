@@ -220,23 +220,15 @@ export async function updateRequest(req, res) {
     const { status, remarks, release_date } = req.body;
     const updateData = {};
 
-    let statusChanged = false;
-    let remarksChanged = false;
-
     if (status && status !== existingRequest.status) {
       updateData.status = status;
-      statusChanged = true;
       
       if (existingRequest.status === 'FOR PAYMENT' && status === 'PROCESSING') {
-        updateData.payment_verified_by = req.user.id;
+        updateData.payment_verified_by = req.user.id; 
       }
     }
     
-    if (remarks !== undefined && remarks !== existingRequest.remarks) {
-      updateData.remarks = remarks;
-      remarksChanged = true;
-    }
-    
+    if (remarks !== undefined) updateData.remarks = remarks;  
     if (release_date !== undefined) updateData.release_date = release_date;
     
     const updatedRequest = await RequestModel.findByIdAndUpdate(
@@ -245,7 +237,7 @@ export async function updateRequest(req, res) {
       { new: true }
     )
       .populate("student_id")
-      .populate("payment_verified_by"); 
+      .populate("payment_verified_by");
 
     if (!updatedRequest) {
       return res.status(404).json({
@@ -253,60 +245,33 @@ export async function updateRequest(req, res) {
         message: "Request not found."
       });
     }
+    
+    let notificationMessage = '';
+    if (status === "FOR CLEARANCE") {
+      notificationMessage = "Your request is now pending. Please wait for clearance verification.";
+    } else if (status === "FOR PAYMENT") {
+      notificationMessage = "Your request is now pending. Please wait for payment verification.";
+    } else if (status === "PROCESSING") {
+      notificationMessage = "Your request is now being processed. Please wait for a message when it is ready for pickup.";
+    } else if (status === "FOR PICKUP") {
+      notificationMessage = "Your document/s is/are ready for pickup!";
+    } else if (status === "CLAIMED") {
+      notificationMessage = "You have successfully claimed your document/s.";
+    } else if (status === "REJECTED") {
+      notificationMessage = "Your request has been rejected. Please check the remarks for more details.";
+    } else if (status === "CANCELLED") {
+      notificationMessage = "Your request has been cancelled.";
+    } else {
 
-    const studentEmail = updatedRequest.student_id?.email;
-    let emailPromise = null; 
-
-    if ((statusChanged || remarksChanged) && studentEmail) {
-      const subject = 'Your Request Status Has Been Updated';
-      const statusText = statusChanged ? `Status updated to: ${status}.` : '';
-      const remarksText = remarksChanged ? `Remarks: ${remarks || 'None'}.` : '';
-      const text = `Dear ${updatedRequest.student_id.first_name},\n\nYour request (Reference ID: ${updatedRequest.reference_id}) has been updated.\n${statusText}\n${remarksText}\n\nPlease check your account for more details.\n\nBest regards,\nReq-IT Team`;
-      const html = `<p>Dear ${updatedRequest.student_id.first_name},</p><p>Your request (Reference ID: ${updatedRequest.reference_id}) has been updated.</p><p>${statusText}</p><p>${remarksText}</p><p>Please check your account for more details.</p><p>Best regards,<br>Req-IT Team</p>`;
-      console.log('Sending email...');
-      emailPromise = sendEmail(studentEmail, subject, text, html).catch((error) => {
-        console.error('Failed to send email notification:', error);
-      });
+      notificationMessage = `Your request status has been updated to: ${status}.`;
     }
 
-    if (statusChanged) {
-      if (status === "FOR CLEARANCE") {
-        createNotification(
-          "Student",
-          updatedRequest.student_id._id,
-          "Your request is now pending. Please wait for clearance verification."
-        );
-      } else if (status === "FOR PAYMENT") {
-        createNotification(
-          "Student",
-          updatedRequest.student_id._id,
-          "Your request is now pending. Please wait for payment verification."
-        );
-      } else if (status === "PROCESSING") {
-        createNotification(
-          "Student",
-          updatedRequest.student_id._id,
-          "Your request is now being processed. Please wait for a message when it is ready for pickup."
-        );
-      } else if (status === "FOR PICKUP") {
-        createNotification(
-          "Student",
-          updatedRequest.student_id._id,
-          "Your document/s is/are ready for pickup!"
-        );
-      } else if (status === "CLAIMED") {
-        createNotification(
-          "Student",
-          updatedRequest.student_id._id,
-          "You have successfully claimed your document/s."
-        );
-      } else if (status === "REJECTED") {
-        createNotification(
-          "Student",
-          updatedRequest.student_id._id,
-          "Your request has been rejected. Please check the remarks for more details."
-        );
-      }
+    if (status && status !== existingRequest.status) {
+      createNotification(
+        "Student",
+        updatedRequest.student_id._id,
+        notificationMessage
+      );
     }
 
     res.status(200).json({
@@ -314,14 +279,6 @@ export async function updateRequest(req, res) {
       message: "Request updated successfully.",
       request: updatedRequest
     });
-
-    if (emailPromise) {
-      emailPromise.then((result) => {
-        if (result?.success) {
-          console.log('Email sent successfully:', result.messageId);
-        }
-      });
-    }
   } catch (error) {
     console.error("Failed to update request:", error);
     res.status(500).json({
