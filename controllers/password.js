@@ -15,16 +15,17 @@ async function findUserByEmail(email) {
 }
 
 async function sendResetEmail(email, resetLink) {
-    const transporter = nodemailer.createTransport({
-        service: "gmail",
+    const transporter = nodemailer.createTransporter({
+        host: 'smtp.sendgrid.net',
+        port: 587,  // try 465 mamaya
+        secure: false,  // true for 465 false for 587
         auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS
-        }
+            user: 'apikey', 
+            pass: process.env.SENDGRID_API_KEY,
+        },
     });
-
     await transporter.sendMail({
-        from: process.env.EMAIL_USER,
+        from: 'process.env.EMAIL_USER', 
         to: email,
         subject: "Password Reset Request",
         text: `Click this link to reset your password: ${resetLink}`
