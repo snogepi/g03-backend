@@ -21,6 +21,10 @@ const notificationSchema = new mongoose.Schema({
     read: {
         type: Boolean,
         default: false
+    },
+    is_deleted: {
+        type: Boolean,
+        default: false
     }
 })
 

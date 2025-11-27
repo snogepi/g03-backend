@@ -50,7 +50,8 @@ export async function viewNotification(req, res) {
 
         const notifications = await NotificationModel.find({
             recipient_type: recipientType,
-            recipient_id: id
+            recipient_id: id,
+            is_deleted: false  // Exclude soft-deleted notifications
         }).sort({ date_sent: -1 })
 
         res.status(200).json({
@@ -92,7 +93,8 @@ export async function getUnreadNotificationCount(req, res) {
         const unreadCount = await NotificationModel.countDocuments({
             recipient_type: recipientType,
             recipient_id: id,
-            read: false
+            read: false,
+            is_deleted: false
         });
         res.status(200).json({
             success: true,
@@ -118,7 +120,8 @@ export async function markNotificationAsRead(req, res) {
                 _id: notificationId,
                 recipient_type: recipientType,
                 recipient_id: id,
-                read: false  
+                read: false,
+                is_deleted: false
             },
             { read: true },
             { new: true }
@@ -140,6 +143,43 @@ export async function markNotificationAsRead(req, res) {
         res.status(500).json({
             success: false,
             message: "Server error while marking notification as read."
+        });
+    }
+}
+
+export async function softDeleteNotification(req, res) {
+    try {
+        const notificationId = req.params.id;
+        const { id, role } = req.user;
+        const recipientType = role.toLowerCase() === "student" ? "Student" : "Staff";
+
+        const notification = await NotificationModel.findOneAndUpdate(
+            {
+                _id: notificationId,
+                recipient_type: recipientType,
+                recipient_id: id,
+                is_deleted: false 
+            },
+            { is_deleted: true },
+            { new: true }
+        );
+        if (!notification) {
+            return res.status(404).json({
+                success: false,
+                message: "Notification not found or already deleted."
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Notification soft-deleted successfully.",
+            notification
+        });
+    } catch (error) {
+        console.error("Failed to soft-delete notification:", error);
+        res.status(500).json({
+            success: false,
+            message: "Server error while soft-deleting notification."
         });
     }
 }
