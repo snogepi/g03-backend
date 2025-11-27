@@ -1,6 +1,7 @@
 import { RequestModel } from "../models/request.js";
 import { ClearanceModel } from "../models/clearance.js";
 import { createNotification } from "./notification.js";
+import { sendEmail } from "../utils/email.js";
 
 async function generateReferenceId() {
     const now = new Date();
@@ -236,7 +237,7 @@ export async function updateRequest(req, res) {
       updateData,
       { new: true }
     )
-      .populate("student_id")
+      .populate("student_id", "email")
       .populate("payment_verified_by"); 
 
     if (!updatedRequest) {
@@ -276,6 +277,17 @@ export async function updateRequest(req, res) {
 
     if (message) {
       createNotification("Student", updatedRequest.student_id._id, message);
+
+      const studentEmail = updatedRequest.student_id.email;
+      if (studentEmail) {
+        const subject = 'Request Update Notification';
+        
+        sendEmail(studentEmail, subject, message).catch((err) => {
+          console.error('Failed to send email notification:', err.message);
+        });
+      } else {
+        console.warn('No email found for student; skipping email notification.');
+      }
     }
 
     res.status(200).json({
