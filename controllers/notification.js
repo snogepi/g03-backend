@@ -109,7 +109,7 @@ export async function getUnreadNotificationCount(req, res) {
 
 export async function markNotificationAsRead(req, res) {
     try {
-        const { notificationId } = req.params.id;  
+        const notificationId = req.params.id;  
         const { id, role } = req.user;
         const recipientType = role.toLowerCase() === "student" ? "Student" : "Staff";
         
