@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const transporter = nodemailer.createTransporter({
+const transporter = nodemailer.createTransport({
   service: 'SendGrid',
   auth: {
     user: 'apikey',  

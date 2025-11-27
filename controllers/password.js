@@ -15,7 +15,7 @@ async function findUserByEmail(email) {
 }
 
 async function sendResetEmail(email, resetLink) {
-    const transporter = nodemailer.createTransporter({
+    const transporter = nodemailer.createTransport({
         host: 'smtp.sendgrid.net',
         port: 587,  // try 465 mamaya
         secure: false,  // true for 465 false for 587
