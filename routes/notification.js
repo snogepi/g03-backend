@@ -11,6 +11,6 @@ router.get('/view', auth, viewNotification)
 
 router.get('/unread-count', auth, getUnreadNotificationCount)
 
-router.get('/read/:id', auth, markNotificationAsRead)
+router.put('/read/:id', auth, markNotificationAsRead)
 
 export { router as notificationRoutes }
