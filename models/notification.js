@@ -17,6 +17,10 @@ const notificationSchema = new mongoose.Schema({
     date_sent: {
         type: Date,
         default: Date.now
+    },
+    read: {
+        type: Boolean,
+        default: false
     }
 })
 
