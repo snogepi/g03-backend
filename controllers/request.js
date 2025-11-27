@@ -282,9 +282,13 @@ export async function updateRequest(req, res) {
       if (studentEmail) {
         const subject = 'Request Update Notification';
         
-        sendEmail(studentEmail, subject, message).catch((err) => {
-          console.error('Failed to send email notification:', err.message);
-        });
+        try {
+          console.log("Sending email to:", studentEmail);
+          await sendEmail(studentEmail, subject, message);
+        } catch (err) {
+          console.error("Failed to send email notification:", err.message);
+        }
+
       } else {
         console.warn('No email found for student; skipping email notification.');
       }
