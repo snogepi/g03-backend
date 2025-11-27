@@ -46,8 +46,10 @@ export async function viewNotification(req, res) {
     try {
         const { id, role } = req.user
 
+        const recipientType = role.toLowerCase() === "student" ? "Student" : "Staff";
+
         const notifications = await NotificationModel.find({
-            recipient_type: role === "student" ? "Student" : "Staff",
+            recipient_type: recipientType,
             recipient_id: id
         }).sort({ date_sent: -1 })
 
@@ -67,20 +69,17 @@ export async function viewNotification(req, res) {
 }
 
 export async function createNotification(recipient_type, recipient_id, message) {
-    try {
-        const newNotification = new NotificationModel({
-            recipient_type: recipient_type,
-            recipient_id: recipient_id,
-            message: message,
-            date_sent: new Date()
-        })
-
-        await newNotification.save()
-
-        console.log('Notification sent successfully!')
-    }
-
-    catch(error) {
-        console.error("Failed to create notification:", error)
-    }
+  try {
+    console.log(`Creating notification: type=${recipient_type}, id=${recipient_id}, message=${message}`);
+    const newNotification = new NotificationModel({
+      recipient_type: recipient_type,
+      recipient_id: recipient_id,
+      message: message,
+      date_sent: new Date()
+    });
+    await newNotification.save();
+    console.log('Notification saved successfully!');
+  } catch (error) {
+    console.error("Failed to create notification:", error);
+  }
 }
