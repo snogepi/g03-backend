@@ -254,7 +254,7 @@ export async function updateRequest(req, res) {
       if (status === "FOR CLEARANCE") {
         message = `Your request (Ref: ${refId}) is now pending. Please wait for clearance verification.`;
       } else if (status === "FOR PAYMENT") {
-        message = `Your request (Ref: ${refId}) is now pending. Please wait for payment verification.`;
+        message = `Your request (Ref: ${refId}) has completed clearance review and is now ready for payment. Please proceed with the payment process and upload your proof of payment once finished.`;
       } else if (status === "PROCESSING") {
         message = `Your request (Ref: ${refId}) is now being processed. Please wait for a message when it is ready for pickup.`;
       } else if (status === "FOR PICKUP") {
@@ -267,7 +267,7 @@ export async function updateRequest(req, res) {
     }
 
     if (remarks !== undefined && remarks !== existingRequest.remarks) {
-      const remarksText = remarks ? `Remarks: ${remarks}` : 'Remarks have been cleared.';
+      const remarksText = remarks ? `Remarks: ${remarks}` : '';
       if (message) {
         message += ` ${remarksText}`;
       } else {
