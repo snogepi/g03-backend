@@ -25,7 +25,7 @@ export async function scanRFID(req, res) {
         if (!userType) {
             return res.status(404).json({
                 success: false,
-                message: "RFID tag not registered to any user."
+                message: "RFID Not Registered – Manual Verification Required."
             })
         }
 
