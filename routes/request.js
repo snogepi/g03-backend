@@ -27,7 +27,7 @@ router.get('/requestsbystatus', auth, getRequestsByStatus);
 // ---------------------------------
 // STUDENT ROUTES
 // ---------------------------------
-router.post('/createrequest', async (req, res) => {         
+router.post('/createrequest', auth, async (req, res) => {         
   const newRequest = await createRequest(req.body);
   res.json({ isAdded: { request: newRequest } });
 });

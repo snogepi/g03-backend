@@ -54,15 +54,15 @@ export async function createClearance(req, res) {
 
 export async function verifyClearance(req, res) {
     try {
-        const { id } = req.params
-        const { status, remarks } = req.body
-        const staffId = req.user.id
+        const { id } = req.params;
+        const { status, remarks } = req.body;
+        const staffId = req.user.id;
 
         if (!status || !["CLEARED", "NOT CLEARED"].includes(status)) {
             return res.status(400).json({
                 success: false,
                 message: "Status must be 'CLEARED' or 'NOT CLEARED'."
-            })
+            });
         }
 
         const updatedClearance = await ClearanceModel.findByIdAndUpdate(
@@ -75,64 +75,62 @@ export async function verifyClearance(req, res) {
             },
             { new: true }
         ).populate("student_id")
-        .populate("request_id")
+        .populate("request_id");
 
         if (!updatedClearance) {
             return res.status(404).json({
                 success: false,
                 message: "Clearance record not found."
-            })
+            });
         }
 
-        const requestId = updatedClearance.request_id?._id
-        const studentId = updatedClearance.student_id?._id
+        const requestId = updatedClearance.request_id?._id;
+        const studentId = updatedClearance.student_id?._id;
 
         if (!requestId) {
             return res.status(404).json({
                 success: false,
                 message: "Linked request not found."
-            })
+            });
         }
 
         if (status === "CLEARED") {
             const updatedRequest = await RequestModel.findByIdAndUpdate(
                 requestId,
-                { status: "PENDING (Payment)" },
+                { status: "FOR PAYMENT" },
                 { new: true }
-            )
+            );
 
             if (!updatedRequest) {
                 return res.status(404).json({
                     success: false,
                     message: "Request not found when updating after clearance."
-                })
+                });
             }
 
             createNotification(
                 "Student",
                 studentId,
                 "Your clearance has been verified. Please proceed with payment."
-            )
+            );
         } else if (status === "NOT CLEARED") {
             createNotification(
                 "Student",
                 studentId,
                 "Your clearance was NOT approved. Please settle your obligations."
-            )
+            );
         }
 
         res.status(200).json({
             success: true,
             message: "Clearance verified successfully.",
             clearance: updatedClearance
-        })
-    }
-
-    catch(error) {
-        console.error("Failed to verify clearance:", error) 
+        });
+    } catch (error) {
+        console.error("Failed to verify clearance:", error); 
         res.status(500).json({
             success: false,
             message: "Server error while verifying clearance."
-        })
+        });
     }
 }

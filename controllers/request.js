@@ -30,38 +30,54 @@ async function generateReferenceId() {
 
 // new req
 export async function createRequest(body) {
-  try {
-    if (
-      !body.student_id ||
-      !body.documents ||
-      !Array.isArray(body.documents) ||
-      body.documents.length === 0 ||
-      !body.purpose ||
-      !body.contact_number ||
-      !body.last_sem_attended ||
-      !body.semester ||
-      body.total_amount == null ||
-      typeof body.total_amount !== 'number'
-    ) {
-      throw new Error("Missing or invalid required fields. Ensure documents is an array, and total_amount is a number.");
+    try {
+        if (
+            !body.student_id ||
+            !body.documents ||
+            !Array.isArray(body.documents) ||
+            body.documents.length === 0 ||
+            !body.purpose ||
+            !body.contact_number ||
+            !body.last_sem_attended ||
+            !body.semester ||
+            body.total_amount == null ||
+            typeof body.total_amount !== 'number'
+        ) {
+            throw new Error("Missing or invalid required fields. Ensure documents is an array, and total_amount is a number.");
+        }
+
+        for (const doc of body.documents) {
+            if (!doc.name || typeof doc.price !== 'number') {
+                throw new Error("Each document must have a name and a numeric price.");
+            }
+        }
+
+        body.reference_id = await generateReferenceId();
+
+        const request = new RequestModel(body);
+        const saved = await request.save();
+
+        try {
+            const newClearance = new ClearanceModel({
+                request_id: saved._id,  
+                student_id: body.student_id 
+            });
+            await newClearance.save();
+            console.log(`Clearance record created for request ${saved._id}`);
+        } catch (clearanceError) {
+            console.error("Failed to create clearance record:", clearanceError);
+
+            await RequestModel.findByIdAndDelete(saved._id);
+            throw new Error("Request created but clearance record failed. Request has been rolled back.");
+        }
+
+        return saved;
+    } catch (err) {
+        console.error("Error creating request:", err);
+        throw err;
     }
-
-    for (const doc of body.documents) {
-      if (!doc.name || typeof doc.price !== 'number') {
-        throw new Error("Each document must have a name and a numeric price.");
-      }
-    }
-
-    body.reference_id = await generateReferenceId();
-
-    const request = new RequestModel(body);
-    const saved = await request.save();
-    return saved;
-  } catch (err) {
-    console.error("Error creating request:", err);
-    throw err;
-  }
 }
+
 
 export async function viewRequest(req, res) { // working!
   try {
@@ -207,106 +223,131 @@ export async function viewRequests(req, res) { // working!
 
 // update reqs (staff ONLY)
 export async function updateRequest(req, res) {
-  try {
-    const { id } = req.params;
-    const existingRequest = await RequestModel.findById(id);
-    if (!existingRequest || existingRequest.is_deleted) {
-      return res.status(404).json({
-        success: false,
-        message: "Request not found or has been deleted."
-      });
-    }
-
-    const { status, remarks, release_date } = req.body;
-    const updateData = {};
-
-    if (status && status !== existingRequest.status) {
-      updateData.status = status;
-      
-      if (existingRequest.status === 'FOR PAYMENT' && status === 'PROCESSING') {
-        updateData.payment_verified_by = req.user.id; 
-      }
-   
-    }
-    
-    if (remarks !== undefined) updateData.remarks = remarks;  
-    if (release_date !== undefined) updateData.release_date = release_date;
-    
-    const updatedRequest = await RequestModel.findByIdAndUpdate(
-      id,
-      updateData,
-      { new: true }
-    )
-      .populate("student_id", "email")
-      .populate("payment_verified_by"); 
-
-    if (!updatedRequest) {
-      return res.status(404).json({
-        success: false,
-        message: "Request not found."
-      });
-    }
-
-    let message = '';
-    const refId = updatedRequest.reference_id || 'N/A';  
-
-    if (status && status !== existingRequest.status) {
-      if (status === "FOR CLEARANCE") {
-        message = `Your request (Ref: ${refId}) is now pending. Please wait for clearance verification.`;
-      } else if (status === "FOR PAYMENT") {
-        message = `Your request (Ref: ${refId}) has completed clearance review and is now ready for payment. Please proceed with the payment process and upload your proof of payment once finished.`;
-      } else if (status === "PROCESSING") {
-        message = `Your request (Ref: ${refId}) is now being processed. Please wait for a message when it is ready for pickup.`;
-      } else if (status === "FOR PICKUP") {
-        message = `Your request (Ref: ${refId}) - Your document/s is/are ready for pickup!`;
-      } else if (status === "CLAIMED") {
-        message = `Your request (Ref: ${refId}) - You have successfully claimed your document/s.`;
-      } else if (status === "REJECTED") {
-        message = `Your request (Ref: ${refId}) has been rejected. Please check the remarks for more details.`;
-      }
-    }
-
-    if (remarks !== undefined && remarks !== existingRequest.remarks) {
-      const remarksText = remarks ? `Remarks: ${remarks}` : '';
-      if (message) {
-        message += ` ${remarksText}`;
-      } else {
-        message = `Your request (Ref: ${refId}) has been updated. ${remarksText}`;
-      }
-    }
-
-    if (message) {
-      createNotification("Student", updatedRequest.student_id._id, message);
-
-      const studentEmail = updatedRequest.student_id.email;
-      if (studentEmail) {
-        const subject = 'Request Update Notification';
-        
-        try {
-          console.log("Sending email to:", studentEmail);
-          await sendEmail(studentEmail, subject, message);
-        } catch (err) {
-          console.error("Failed to send email notification:", err.message);
+    try {
+        const { id } = req.params;
+        const existingRequest = await RequestModel.findById(id);
+        if (!existingRequest || existingRequest.is_deleted) {
+            return res.status(404).json({
+                success: false,
+                message: "Request not found or has been deleted."
+            });
         }
 
-      } else {
-        console.warn('No email found for student; skipping email notification.');
-      }
-    }
+        const { status, remarks, release_date } = req.body;
+        const updateData = {};
 
-    res.status(200).json({
-      success: true,
-      message: "Request updated successfully.",
-      request: updatedRequest
-    });
-  } catch (error) {
-    console.error("Failed to update request:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error during update."
-    });
-  }
+        if (status && status !== existingRequest.status) {
+            updateData.status = status;
+            
+            if (existingRequest.status === 'FOR PAYMENT' && status === 'PROCESSING') {
+                updateData.payment_verified_by = req.user.id; 
+            }
+        }
+        
+        if (remarks !== undefined) updateData.remarks = remarks;  
+        if (release_date !== undefined) updateData.release_date = release_date;
+        
+        const updatedRequest = await RequestModel.findByIdAndUpdate(
+            id,
+            updateData,
+            { new: true }
+        )
+            .populate("student_id", "email")
+            .populate("payment_verified_by"); 
+
+        if (!updatedRequest) {
+            return res.status(404).json({
+                success: false,
+                message: "Request not found."
+            });
+        }
+
+        if (status === 'FOR PAYMENT') {
+            try {
+                const clearance = await ClearanceModel.findOne({ request_id: id });
+                if (clearance && clearance.status === 'PENDING') {
+                    await ClearanceModel.findByIdAndUpdate(clearance._id, {
+                        status: 'CLEARED',
+                        verified_by: req.user.id,
+                        verified_date: new Date(),
+                        remarks: remarks || ""
+                    });
+                    console.log(`Clearance verified for request ${id}`);
+                    
+                    createNotification(
+                        "Student",
+                        updatedRequest.student_id._id,
+                        "Your clearance has been verified. Please proceed with payment."
+                    );
+                } else if (!clearance) {
+                    console.warn(`No clearance record found for request ${id}`);
+                }
+            } catch (clearanceError) {
+                console.error("Failed to verify clearance during request update:", clearanceError);
+                
+            }
+        }
+
+        let message = '';
+        const refId = updatedRequest.reference_id || 'N/A';  
+
+        if (status && status !== existingRequest.status) {
+            if (status === "FOR CLEARANCE") {
+                message = `Your request (Ref: ${refId}) is now pending. Please wait for clearance verification.`;
+            } else if (status === "FOR PAYMENT") {
+                message = `Your request (Ref: ${refId}) has completed clearance review and is now ready for payment. Please proceed with the payment process and upload your proof of payment once finished.`;
+            } else if (status === "PROCESSING") {
+                message = `Your request (Ref: ${refId}) is now being processed. Please wait for a message when it is ready for pickup.`;
+            } else if (status === "FOR PICKUP") {
+                message = `Your request (Ref: ${refId}) - Your document/s is/are ready for pickup!`;
+            } else if (status === "CLAIMED") {
+                message = `Your request (Ref: ${refId}) - You have successfully claimed your document/s.`;
+            } else if (status === "REJECTED") {
+                message = `Your request (Ref: ${refId}) has been rejected. Please check the remarks for more details.`;
+            }
+        }
+
+        if (remarks !== undefined && remarks !== existingRequest.remarks) {
+            const remarksText = remarks ? `Remarks: ${remarks}` : '';
+            if (message) {
+                message += ` ${remarksText}`;
+            } else {
+                message = `Your request (Ref: ${refId}) has been updated. ${remarksText}`;
+            }
+        }
+
+        if (message) {
+            createNotification("Student", updatedRequest.student_id._id, message);
+
+            const studentEmail = updatedRequest.student_id.email;
+            if (studentEmail) {
+                const subject = 'Request Update Notification';
+                
+                try {
+                    console.log("Sending email to:", studentEmail);
+                    await sendEmail(studentEmail, subject, message);
+                } catch (err) {
+                    console.error("Failed to send email notification:", err.message);
+                }
+            } else {
+                console.warn('No email found for student; skipping email notification.');
+            }
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Request updated successfully.",
+            request: updatedRequest
+        });
+    } catch (error) {
+        console.error("Failed to update request:", error);
+        res.status(500).json({
+            success: false,
+            message: "Server error during update."
+        });
+    }
 }
+
 
 export async function getRequestCounts(req, res) {
   try {
