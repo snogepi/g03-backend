@@ -288,6 +288,25 @@ export async function updateRequest(req, res) {
             }
         }
 
+        if (status === 'REJECTED') {
+            try {
+                const clearance = await ClearanceModel.findOne({ request_id: id });
+                if (clearance && clearance.status === 'PENDING') {
+                    await ClearanceModel.findByIdAndUpdate(clearance._id, {
+                        status: 'NOT CLEARED',
+                        verified_by: req.user.id,
+                        verified_date: new Date(),
+                        remarks: remarks || "Request rejected."
+                    });
+                    console.log(`Clearance set to NOT CLEARED for rejected request ${id}`);
+                } else if (!clearance) {
+                    console.warn(`No clearance record found for request ${id}`);
+                }
+            } catch (clearanceError) {
+                console.error("Failed to update clearance during request rejection:", clearanceError);
+            }
+        }
+
         let message = '';
         const refId = updatedRequest.reference_id || 'N/A';  
 
