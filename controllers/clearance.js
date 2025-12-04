@@ -1,6 +1,5 @@
 import { ClearanceModel } from "../models/clearance.js";
 import { RequestModel } from "../models/request.js";
-import { createNotification } from "./notification.js";
 
 export async function createClearance(req, res) {
     if (req.user.role !== "staff") {
@@ -85,7 +84,6 @@ export async function verifyClearance(req, res) {
         }
 
         const requestId = updatedClearance.request_id?._id;
-        const studentId = updatedClearance.student_id?._id;
 
         if (!requestId) {
             return res.status(404).json({
@@ -107,18 +105,6 @@ export async function verifyClearance(req, res) {
                     message: "Request not found when updating after clearance."
                 });
             }
-
-            createNotification(
-                "Student",
-                studentId,
-                "Your clearance has been verified. Please proceed with payment."
-            );
-        } else if (status === "NOT CLEARED") {
-            createNotification(
-                "Student",
-                studentId,
-                "Your clearance was NOT approved. Please settle your obligations."
-            );
         }
 
         res.status(200).json({
