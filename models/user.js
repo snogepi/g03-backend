@@ -7,8 +7,6 @@ const studentSchema = new mongoose.Schema({
     rfid_tag: {
         type: String,
         default: null,
-        unique: true,
-        sparse: true
     },
     student_number: {
         type: String,
